@@ -21,70 +21,38 @@ num_channels = 64;
 %num_result_channels_list = [1, 2, 3, 4, 5, 10, 20, 40, 60, 80, 100];
 num_result_channels_list = [1];
 num_condition_channels_list = [4];
-count_list = 2^num_condition_channels_list;
+count_list = (2^num_condition_channels_list)*2;
 %num_condition_channels_list = [20, 40, 60];
 %num_condition_channels_list = [1, 2, 3, 4, 5, 10, 20, 40, 60, 80, 100];
 D = 10000; %dimension of the hypervectors
 features_result = [];
 features_condition = [];
 learningrate=0.5; % percentage of the dataset used to train the algorithm
-
-%% need to change this for EMG and force sensor data, maybe mav?
-%all values become positive (assuming have negative values) (move range to between 0 and max+abs(min)
-for k=1:num_channels
-    features(:,k)=features(:,k)-min(features(:,k));
-end
 accuracy_list = zeros(length(count_list), min(length(maxL_condition_list), length(maxL_result_list)));
 error_due_to_repeat = zeros(length(count_list), min(length(maxL_condition_list), length(maxL_result_list)));
 
-for g = 1:max(length(num_result_channels_list), length(num_condition_channels_list))
-%for g = 1:length(count_list)
-%    count = count_list(g);
-%     num_result_channels = num_result_channels_list(1);
-%     num_condition_channels = num_condition_channels_list(1);
-    if (length(num_result_channels_list) > length(num_condition_channels_list))
-        num_result_channels = num_result_channels_list(g);
-        num_condition_channels = num_condition_channels_list(1);
-    elseif (length(num_result_channels_list) == length(num_condition_channels_list))
-        num_result_channels = num_result_channels_list(g);
-        num_condition_channels = num_condition_channels_list(g);
-    else
-        num_result_channels = num_result_channels_list(1);
-        num_condition_channels = num_condition_channels_list(g);
-    end
-    count = count_list;
-    % move range to between 0 and 1
-    %for k=1:num_channels
-    %    features(:,k)=features(:,k)/max(features(:,k));
-    %end
-
-    % need to do this to get negative values, features in the range of -0.4 and 0.6
-     %for i=1:num_channels
-     % features(:,i)=features(:,i)-0.4;
-     %end
-
-    %% designate condition and result channels
-    %features_result=features(:,1:num_result_channels);
-    %features_result=features(1:10,33-num_result_channels:32); %5 channels GSR
-    %features_condition=features(226:235,33:num_condition_channels+32); %5 channels ECG
+for g = 1:length(num_result_channels_list)
+         num_result_channels = num_result_channels_list(g);
+         num_condition_channels = num_condition_channels_list(g);
+         count = count_list;
     %% works
 %     count = count/10;
-%     features_result = [0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
-%     features_condition = [0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
-%     for i = 2:1:count
-%         features_result = [features_result; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
-%     end
-%     features_result_1 = features_result;
-%     for i = 2:1:num_result_channels
-%         features_result = [features_result features_result_1];
-%     end
-%     for i = 2:1:count
-%         features_condition = [features_condition; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
-%     end
-%     features_condition_1 = features_condition;
-%     for i = 2:1:num_condition_channels
-%         features_condition = [features_condition features_condition_1];
-%     end
+     features_result = [0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
+     features_condition = [0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
+     for i = 2:1:count
+         features_result = [features_result; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
+     end
+     features_result_1 = features_result;
+     for i = 2:1:num_result_channels
+         features_result = [features_result features_result_1];
+     end
+     for i = 2:1:count
+         features_condition = [features_condition; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
+     end
+     features_condition_1 = features_condition;
+     for i = 2:1:num_condition_channels
+         features_condition = [features_condition features_condition_1];
+     end
     %features_result = [0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
     %features_condition = [0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 1];
     % for i = 1:1:count
@@ -122,25 +90,42 @@ for g = 1:max(length(num_result_channels_list), length(num_condition_channels_li
 %         features_condition = [features_condition ; pair_condition]; %#ok<AGROW>
 %     end
 
-    feature_condition = (dec2bin(0:2^N-1)' - '0')';
-    for i = 1:length(x)
-        choices = (find(x(1,:) == 0) - 1);
-        randselected_result = randsample(choices,1);
-        feature_result = [feature_result; randselected_result]; %#ok<AGROW>
+    features_condition = (dec2bin(0:2^num_condition_channels-1)' - '0')';
+    for i = 1:length(features_condition)
+        choices = (find(features_condition(i,:) == 0));
+        if size(choices,2) > 1
+            randselected_result = randsample(choices,1);
+        elseif size(choices,2) == 1
+            randselected_result = choices;
+        else
+            randselected_result = 0; 
+        end
+        features_result = [features_result; randselected_result]; %#ok<AGROW>
     end
+    
+    % multiple channels randomly select pairs for training and then select from previous dataset for recall
+%     for i = 1:1:(count - count*learningrate)
+%         x = randi([1 count*learningrate],1,1);
+%         pair_result = features_result(x,:);
+%         pair_condition = features_condition(x,:);
+%         features_result = [features_result ; pair_result]; %#ok<AGROW>
+%         features_condition = [features_condition ; pair_condition]; %#ok<AGROW>
+%     end
+    features_result = [features_result; features_result]; %#ok<AGROW>
+    features_condition = [features_condition; features_condition]; %#ok<AGROW>
     %% verifies that the recall parts are all repeats of training data 
-%     matching = zeros((count),1);
-%     for i = (count*learningrate+1):1:count
-%         if sum(features_condition(1:count*learningrate) == features_condition(i)) == 0
-%             fprintf ('not a repeat for condition\n');
-%         else
-%             [row_condition, ~] = find(features_condition(1:count*learningrate)==features_condition(i));
-%         end
-%         if sum(features_result(1:count*learningrate) == features_result(i)) == 0
-%             fprintf ('not a repeat for result\n');
-%         else
-%             [row_result, ~] = find(features_result(1:count*learningrate) == features_result(i));
-%         end
+    matching = zeros((count),1);
+    for i = (count*learningrate+1):1:count
+        if sum(features_condition(1:count*learningrate) == features_condition(i)) == 0
+            fprintf ('not a repeat for condition\n');
+        else
+            [row_condition, ~] = find(features_condition(1:count*learningrate)==features_condition(i));
+        end
+        if sum(features_result(1:count*learningrate) == features_result(i)) == 0
+            fprintf ('not a repeat for result\n');
+        else
+            [row_result, ~] = find(features_result(1:count*learningrate) == features_result(i));
+        end
 %         if (row_condition ~= row_result)
 %             %fprintf ('not matching\n');
 %             matching(i) = 0;
@@ -152,6 +137,7 @@ for g = 1:max(length(num_result_channels_list), length(num_condition_channels_li
 %     if sum(matching) ~= (count - count*learningrate)
 %         fprintf('pairs arent matching\n');
 %     end
+    end
 
     %% =======HDC============
     if (select == 1)
@@ -166,8 +152,10 @@ for g = 1:max(length(num_result_channels_list), length(num_condition_channels_li
     %classes = 2; % level of classes
     precision = 20; % no use
     %ngram = 10; % for temporal encode
-    precision_condition = maxL_condition / max(features_condition(:));
-    precision_result = maxL_result / max(features_result(:));
+    %precision_condition = maxL_condition / max(features_condition(:));
+    %precision_result = maxL_result / max(features_result(:));
+    precision_condition = 1;
+    precision_result = 1;
 
     %% Encoding
     % Also generates continuous item memory for each channel that can be used
@@ -187,10 +175,14 @@ for g = 1:max(length(num_result_channels_list), length(num_condition_channels_li
     features_result_training = features_result(1:floor(count*learningrate),:); %for now..
     features_condition_recall = features_condition(floor(count*learningrate)+1:count,:); %for now..
     features_result_recall = features_result(floor(count*learningrate)+1:count,:); %for now..
-    quantized_result_training = int64 (features_result_training * precision_result);
-    quantized_condition_training = int64 (features_condition_training * precision_condition);
-    quantized_result_recall = int64 (features_result_recall * precision_result);
-    quantized_condition_recall = int64 (features_condition_recall * precision_condition);
+    %quantized_result_training = int64 (features_result_training * precision_result);
+    quantized_result_training = features_result_training;
+    %quantized_condition_training = int64 (features_condition_training * precision_condition);
+    quantized_condition_training = features_condition_training;
+    %quantized_result_recall = int64 (features_result_recall * precision_result);
+    quantized_result_recall = features_result_recall;
+    %quantized_condition_recall = int64 (features_condition_recall * precision_condition);
+    quantized_condition_recall = features_condition_recall;
     size_training = size(features_condition_training);
     length_training = size_training(1);
     size_recall = size(features_condition_recall);
@@ -323,6 +315,7 @@ for g = 1:max(length(num_result_channels_list), length(num_condition_channels_li
             accuracy_count = accuracy_count + 1;
         end
     end
+    next_to = [expected actuator_values];
     %%
     % accuracy_2 is do all channels match for each sample
     accuracy_2 = accuracy_count/expected_length*100

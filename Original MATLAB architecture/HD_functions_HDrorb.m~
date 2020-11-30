@@ -84,6 +84,28 @@ function [CiMC, iMC, CiMR, iMR] = initItemMemories (D, MAXLC, channelsC, MAXLR, 
     end
 end
 
+function [randomHV, key] = lookupItemMemeory (itemMemory, key)
+%
+% DESCRIPTION   : recalls a vector from item Memory based on inputs
+%
+% INPUTS:
+%   itemMemory  : item memory
+%   rawKey      : the input key
+%   D           : Dimension of vectors
+%   precision   : precision used in quantization of input EMG signals
+%
+% OUTPUTS:
+%   randomHV    : return the related vector
+
+    %%quantize to integer (rounds to nearest integer, 0.5 goes up)
+  
+    if itemMemory.isKey (key) 
+        randomHV = itemMemory (key);
+    else
+        fprintf ('CANNOT FIND THIS KEY: %d\n', key);       
+    end
+end
+
 function randomHV = genRandomHV(D)
 %
 % DESCRIPTION   : generate a random vector with zero mean 
@@ -101,6 +123,159 @@ function randomHV = genRandomHV(D)
         randomHV (randomIndex(D/2+1 : D)) = 0;
        
     end
+end
+
+function [downSampledData, downSampledLabels] = downSampling (data, labels, donwSampRate)
+%
+% DESCRIPTION   : apply a downsampling to get rid of redundancy in signals 
+%
+% INPUTS:
+%   data        : input data
+%   labels      : input labels
+%   donwSampRate: the rate or stride of downsampling
+% OUTPUTS:
+%   downSampledData: downsampled data
+%   downSampledLabels: downsampled labels
+%    
+	j = 1;
+    
+    for i = 1:donwSampRate:length(data(:,1))
+        
+		downSampledData (j,:) = data(i, :);
+		downSampledLabels (j) = labels(i);
+        j = j + 1;
+        
+    end
+    
+    downSampledLabels = downSampledLabels';
+    
+end
+	
+function proj_m = projBRandomHV( D, F ,q)
+%   D: dim
+%   F: number of features
+%   q: sparsity
+
+   proj_m=[]; 
+   if mod(D,2)
+        disp ('Dimension is odd!!');
+   else   
+    F_D=F*D;
+    probM=rand(F,D);
+    p_n1=(1-q)/2;
+    p_p1=p_n1;
+
+    for k=1:F
+     for i=1:D
+         if probM(k,i)<p_n1     
+            proj_m(k,i)=-1;
+         else if (p_n1<=probM(k,i)) && (probM(k,i)<(q+p_n1))
+           proj_m(k,i)=0;   
+         else 
+           proj_m(k,i)=1; 
+         end
+     end
+     end 
+    end
+   end
+ 
+end
+
+function randomHV = projItemMemeory (projM, voffeature,ioffeature)
+%
+% INPUTS:
+%   projM	: random vector with {-1,0,+1}
+%   voffeature	: value of a feature
+%   ioffeature	: index of a feature
+% OUTPUTS:
+%   randomHV    : return the related vector
+
+ 
+        projV=projM(ioffeature,:);
+        h= voffeature.*projV;
+
+    for i=1:length(h)
+      if h(i)>0
+        randomHV(i)=1;
+        else
+        randomHV(i)=0;
+       end
+    end
+
+end
+
+function Ngram = computeNgramproj (buffer, CiM, N, precision, iM, channels,projM)
+% 	DESCRIPTION: computes the N-gram
+% 	INPUTS:
+% 	buffer   :  data input
+% 	iM       :  Item Memory for IDs of the channels
+%   N        :  dimension of the N-gram
+%   precision:  precision used in quantization (no use)
+% 	CiM      :  Continious Item Memory for the values of a channel (no use)
+%   channels :  numeber of features
+% 	OUTPUTS:
+% 	Ngram    :  query hypervector
+    
+    %setup for first sample
+    chHV = projItemMemeory (projM, buffer(1, 1),1);
+    chHV = xor(chHV , iM(1));
+    v = chHV;
+    if channels>1    
+    for i = 2 : channels
+        chHV = projItemMemeory (projM, buffer(1, i), i);
+        chHV = xor(chHV , iM(i));
+        if i == 2
+            ch2HV=chHV; 
+        end
+        %create matrix of all channel final outputs to be bundled
+        v = [v; chHV];
+    end
+    
+    %don't understand why adding the xor of the final and 2nd channel
+    chHV = xor(chHV , ch2HV);
+    v = [v; chHV]; 
+    end
+    
+    %Add the other modalities
+    if channels==1
+    Ngram = v;
+    else
+    Ngram = mode(v);
+    end
+    
+    %Add later samples
+    for i = 2:1:N
+        %replicate for other modalities
+        chHV = projItemMemeory (projM, buffer(i, 1), 1);
+        chHV = xor(chHV , iM(1));
+        ch1HV = chHV;
+        %combine the other modalities
+        v = chHV;
+      if channels>1  
+        %replicate for other modalities
+        for j = 2 : channels
+            chHV = projItemMemeory (projM, buffer(i, j), j);
+            chHV = xor(chHV , iM(j));
+            if j == 2
+                ch2HV=chHV; 
+            end
+            %combine the other modalities
+            v = [v; chHV];
+        end  
+        %combine other modalities for whatever this weird thing is
+        chHV = xor(chHV , ch2HV);
+        v = [v; chHV]; 
+      end
+      
+      if channels==1
+        record = v;          
+      else
+        record = mode(v); 
+      end
+		Ngram = xor(circshift (Ngram, [1,1]) , record);
+           
+    end	 
+ 
 end
   
 function [prog_HV] = hdcrorbtrain (few_all, length_training, features_condition, features_result, chAMcondition, chAMresult, iMchcondition, iMchresult, D, channels_condition, channels_result)
@@ -192,16 +367,15 @@ function [actuator_values] = hdcrorbpredict (few_all, length_recall, prog_HV, fe
 % DESCRIPTION   : test accuracy based on input testing data
 %
 % INPUTS:
-%   few_all      : Selects method of bundling extra vectors for even # of
-%   vector cases
 %   length_recall: # of recall samples
-%   prog_HV      : Program hypervector
-%   features_condition      : recall condition data
-%   chAM           : Trained associative memory
+%   labelTestSet : testing labels
+%   testSet      : EMG test data
+%   AM           : Trained associative memory
 %   CiM          : Cont. item memory (no use)
 %   iM           : item memory
 %   D            : Dimension of vectors
 %   N            : size of n-gram, i.e., window size 
+%   precision    : precision used in quantization (no use)
 %
 % OUTPUTS:
 %   accuracy     : classification accuracy for all situations
